@@ -207,16 +207,18 @@ bool ATDTTetrisBox::IsFloorFull(int32 FloorIndex)
 
 void ATDTTetrisBox::FallDown()
 {
-    FVector NewLocation = CurrentFigure->GetActorLocation();
+    FVector CurLocation = CurrentFigure->GetActorLocation();
+    FVector NewLocation = CurLocation;
     NewLocation.Z -= 100.f;
 
-    
-    if (WorldLocToGridIndex(NewLocation).Z < 0 || GridTiles[WorldLocToGridIndex(NewLocation)] != nullptr)
+    CurrentFigure->SetActorLocation(NewLocation);
+
+    if (!IsFigureInBounds() || GridTiles[WorldLocToGridIndex(NewLocation)] != nullptr)
     {
+        CurrentFigure->SetActorLocation(CurLocation);
         LockFigure();
         return;
     }
-    CurrentFigure->SetActorLocation(NewLocation);
 }
 
 void ATDTTetrisBox::LockFigure()
