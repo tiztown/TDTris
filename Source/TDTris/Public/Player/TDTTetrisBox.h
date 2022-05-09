@@ -99,17 +99,29 @@ private:
     bool IsFloorFull(int32 FloorIndex);
 
 
-    void MoveUp();
-    void MoveDown();
+    void MoveForward();
+    void MoveBackward();
     void MoveRight();
     void MoveLeft();
-    void FallDown();
+    void RotateFront();
+    void RotateBack();
+    void RotateRight();
+    void RotateLeft();
+
+    void MoveDown();
+
+    void EnableFallDown();
+    void DisableFallDown();
 
     void LockFigure();
 
+    bool IsFastFalling = false;
+
+    FTimerHandle AutoFallTimerHandle;
     FTimerHandle FallTimerHandle;
-    
+
     TArray<UStaticMeshComponent*> GetFigureBlocks();
+
+    FVector GetCameraForwardVector();
+    FVector GetCameraRightVector();
 };
-
-

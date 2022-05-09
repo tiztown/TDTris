@@ -7,6 +7,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Figures/TDTBaseFigure.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 
 ATDTTetrisBox::ATDTTetrisBox()
 {
@@ -42,7 +43,7 @@ void ATDTTetrisBox::BeginPlay()
 
     SpawnFigure();
 
-    GetWorldTimerManager().SetTimer(FallTimerHandle, this, &ATDTTetrisBox::FallDown, 1.f, true);
+    GetWorldTimerManager().SetTimer(AutoFallTimerHandle, this, &ATDTTetrisBox::MoveDown, 1.f, true);
 }
 
 void ATDTTetrisBox::Tick(float DeltaTime)
@@ -56,10 +57,16 @@ void ATDTTetrisBox::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
     PlayerInputComponent->BindAxis("LookUp", this, &ATDTTetrisBox::AddControllerPitchInput);
     PlayerInputComponent->BindAxis("TurnAround", this, &ATDTTetrisBox::AddControllerYawInput);
-    PlayerInputComponent->BindAction("MoveUp", IE_Pressed, this, &ATDTTetrisBox::MoveUp);
-    PlayerInputComponent->BindAction("MoveDown", IE_Pressed, this, &ATDTTetrisBox::MoveDown);
+    PlayerInputComponent->BindAction("MoveUp", IE_Pressed, this, &ATDTTetrisBox::MoveForward);
+    PlayerInputComponent->BindAction("MoveDown", IE_Pressed, this, &ATDTTetrisBox::MoveBackward);
     PlayerInputComponent->BindAction("MoveRight", IE_Pressed, this, &ATDTTetrisBox::MoveRight);
     PlayerInputComponent->BindAction("MoveLeft", IE_Pressed, this, &ATDTTetrisBox::MoveLeft);
+    PlayerInputComponent->BindAction("RotateRight", IE_Pressed, this, &ATDTTetrisBox::RotateRight);
+    PlayerInputComponent->BindAction("RotateLeft", IE_Pressed, this, &ATDTTetrisBox::RotateLeft);
+    PlayerInputComponent->BindAction("RotateFront", IE_Pressed, this, &ATDTTetrisBox::RotateFront);
+    PlayerInputComponent->BindAction("RotateBack", IE_Pressed, this, &ATDTTetrisBox::RotateBack);
+    PlayerInputComponent->BindAction("FallDown", IE_Pressed, this, &ATDTTetrisBox::EnableFallDown);
+    PlayerInputComponent->BindAction("FallDown", IE_Released, this, &ATDTTetrisBox::DisableFallDown);
 }
 
 void ATDTTetrisBox::SpawnFigure()
@@ -205,8 +212,10 @@ bool ATDTTetrisBox::IsFloorFull(int32 FloorIndex)
     return true;
 }
 
-void ATDTTetrisBox::FallDown()
+
+void ATDTTetrisBox::MoveDown()
 {
+    if (!CurrentFigure) return;
     FVector CurLocation = CurrentFigure->GetActorLocation();
     FVector NewLocation = CurLocation;
     NewLocation.Z -= 100.f;
@@ -217,8 +226,21 @@ void ATDTTetrisBox::FallDown()
     {
         CurrentFigure->SetActorLocation(CurLocation);
         LockFigure();
-        return;
     }
+}
+
+void ATDTTetrisBox::EnableFallDown()
+{
+    IsFastFalling = true;
+    GetWorldTimerManager().PauseTimer(AutoFallTimerHandle);
+    GetWorldTimerManager().SetTimer(FallTimerHandle, this, &ATDTTetrisBox::MoveDown, 0.05f, true);
+}
+
+void ATDTTetrisBox::DisableFallDown()
+{
+    IsFastFalling = false;
+    GetWorldTimerManager().ClearTimer(FallTimerHandle);
+    GetWorldTimerManager().UnPauseTimer(AutoFallTimerHandle);
 }
 
 void ATDTTetrisBox::LockFigure()
@@ -229,7 +251,7 @@ void ATDTTetrisBox::LockFigure()
         FVector GridIndex = WorldLocToGridIndex(Block->GetComponentLocation());
         if (!GridTiles.Contains(GridIndex))
         {
-            GetWorldTimerManager().ClearTimer(FallTimerHandle);
+            GetWorldTimerManager().ClearTimer(AutoFallTimerHandle);
             UE_LOG(LogTemp, Warning, TEXT("--------Game Over!--------"));
             CurrentFigure = nullptr;
             DisableInput(GetWorld()->GetFirstPlayerController());
@@ -256,6 +278,30 @@ TArray<UStaticMeshComponent*> ATDTTetrisBox::GetFigureBlocks()
     return Blocks;
 }
 
+FVector ATDTTetrisBox::GetCameraForwardVector()
+{
+    FVector CamVector = Camera->GetForwardVector();
+    FVector AbsVector = CamVector.GetAbs();
+    FVector NewUnitVector;
+    NewUnitVector.X = UKismetMathLibrary::SignOfFloat(CamVector.X) * (AbsVector.X >= AbsVector.Y);
+    NewUnitVector.Y = UKismetMathLibrary::SignOfFloat(CamVector.Y) * (AbsVector.X < AbsVector.Y);
+    NewUnitVector.Z = 0;
+
+    return NewUnitVector;
+}
+
+FVector ATDTTetrisBox::GetCameraRightVector()
+{
+    FVector CamVector = Camera->GetRightVector();
+    FVector AbsVector = CamVector.GetAbs();
+    FVector NewUnitVector;
+    NewUnitVector.X = UKismetMathLibrary::SignOfFloat(CamVector.X) * (AbsVector.X >= AbsVector.Y);
+    NewUnitVector.Y = UKismetMathLibrary::SignOfFloat(CamVector.Y) * (AbsVector.X < AbsVector.Y);
+    NewUnitVector.Z = 0;
+
+    return NewUnitVector;
+}
+
 bool ATDTTetrisBox::IsFigureInBounds()
 {
     TArray<UStaticMeshComponent*> Blocks = GetFigureBlocks();
@@ -277,13 +323,13 @@ bool ATDTTetrisBox::IsFigureInBounds()
     return true;
 }
 
-void ATDTTetrisBox::MoveUp()
+void ATDTTetrisBox::MoveForward()
 {
     if (!CurrentFigure) return;
 
+    FVector CameraVector = GetCameraForwardVector();
     FVector CurLocation = CurrentFigure->GetActorLocation();
-    FVector NewLocation = CurLocation;
-    NewLocation.X += 100.f;
+    FVector NewLocation = CurLocation + CameraVector * 100.f;
     CurrentFigure->SetActorLocation(NewLocation);
 
     if (!IsFigureInBounds())
@@ -293,13 +339,13 @@ void ATDTTetrisBox::MoveUp()
     }
 }
 
-void ATDTTetrisBox::MoveDown()
+void ATDTTetrisBox::MoveBackward()
 {
     if (!CurrentFigure) return;
 
+    FVector CameraVector = GetCameraForwardVector();
     FVector CurLocation = CurrentFigure->GetActorLocation();
-    FVector NewLocation = CurLocation;
-    NewLocation.X -= 100.f;
+    FVector NewLocation = CurLocation + CameraVector * -100.f;
     CurrentFigure->SetActorLocation(NewLocation);
 
     if (!IsFigureInBounds())
@@ -313,9 +359,9 @@ void ATDTTetrisBox::MoveRight()
 {
     if (!CurrentFigure) return;
 
+    FVector CameraVector = GetCameraRightVector();
     FVector CurLocation = CurrentFigure->GetActorLocation();
-    FVector NewLocation = CurLocation;
-    NewLocation.Y += 100.f;
+    FVector NewLocation = CurLocation + CameraVector * 100.f;
     CurrentFigure->SetActorLocation(NewLocation);
 
     if (!IsFigureInBounds())
@@ -329,14 +375,78 @@ void ATDTTetrisBox::MoveLeft()
 {
     if (!CurrentFigure) return;
 
+    FVector CameraVector = GetCameraRightVector();
     FVector CurLocation = CurrentFigure->GetActorLocation();
-    FVector NewLocation = CurLocation;
-    NewLocation.Y -= 100.f;
+    FVector NewLocation = CurLocation + CameraVector * -100.f;
     CurrentFigure->SetActorLocation(NewLocation);
 
     if (!IsFigureInBounds())
     {
         // UE_LOG(LogTemp, Warning, TEXT("FigureMoveBack"));
         CurrentFigure->SetActorLocation(CurLocation);
+    }
+}
+
+void ATDTTetrisBox::RotateFront()
+{
+    if (!CurrentFigure) return;
+
+    FRotator CurRotation = CurrentFigure->GetActorRotation();
+    FRotator NewRotation = CurRotation;
+    NewRotation.Pitch += 90.f;
+    CurrentFigure->SetActorRotation(NewRotation);
+
+    if (!IsFigureInBounds())
+    {
+        // UE_LOG(LogTemp, Warning, TEXT("FigureMoveBack"));
+        CurrentFigure->SetActorRotation(CurRotation);
+    }
+}
+
+void ATDTTetrisBox::RotateBack()
+{
+    if (!CurrentFigure) return;
+
+    FRotator CurRotation = CurrentFigure->GetActorRotation();
+    FRotator NewRotation = CurRotation;
+    NewRotation.Pitch -= 90.f;
+    CurrentFigure->SetActorRotation(NewRotation);
+
+    if (!IsFigureInBounds())
+    {
+        // UE_LOG(LogTemp, Warning, TEXT("FigureMoveBack"));
+        CurrentFigure->SetActorRotation(CurRotation);
+    }
+}
+
+void ATDTTetrisBox::RotateRight()
+{
+    if (!CurrentFigure) return;
+
+    FRotator CurRotation = CurrentFigure->GetActorRotation();
+    FRotator NewRotation = CurRotation;
+    NewRotation.Roll += 90.f;
+    CurrentFigure->SetActorRotation(NewRotation);
+
+    if (!IsFigureInBounds())
+    {
+        // UE_LOG(LogTemp, Warning, TEXT("FigureMoveBack"));
+        CurrentFigure->SetActorRotation(CurRotation);
+    }
+}
+
+void ATDTTetrisBox::RotateLeft()
+{
+    if (!CurrentFigure) return;
+
+    FRotator CurRotation = CurrentFigure->GetActorRotation();
+    FRotator NewRotation = CurRotation;
+    NewRotation.Roll -= 90.f;
+    CurrentFigure->SetActorRotation(NewRotation);
+
+    if (!IsFigureInBounds())
+    {
+        // UE_LOG(LogTemp, Warning, TEXT("FigureMoveBack"));
+        CurrentFigure->SetActorRotation(CurRotation);
     }
 }
