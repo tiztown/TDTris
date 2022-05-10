@@ -71,7 +71,17 @@ void ATDTTetrisBox::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 void ATDTTetrisBox::SpawnFigure()
 {
-    CurrentFigure = GetWorld()->SpawnActor<ATDTBaseFigure>(FigureClass, FigureSpawnPoint->GetComponentTransform());
+    if (DebugFigures)
+    {
+        CurrentFigure = GetWorld()->SpawnActorDeferred<ATDTBaseFigure>(FigureClass, FigureSpawnPoint->GetComponentTransform());
+        if (CurrentFigure)
+        {
+            CurrentFigure->DebugFigure = true;
+            CurrentFigure->FinishSpawning(FigureSpawnPoint->GetComponentTransform());
+        }
+    }
+    else
+        CurrentFigure = GetWorld()->SpawnActor<ATDTBaseFigure>(FigureClass, FigureSpawnPoint->GetComponentTransform());
 }
 
 void ATDTTetrisBox::GenerateGrid(int32 SizeX, int32 SizeY, int32 SizeZ, float TileSize)
@@ -202,16 +212,22 @@ float ATDTTetrisBox::IndexToFloat(int32 Index)
 
 bool ATDTTetrisBox::IsFloorFull(int32 FloorIndex)
 {
+    if (FloorIndex < 0 || FloorIndex >= BoxSizeZ)
+    {
+        // UE_LOG(LogTemp, Error, TEXT("INDEX OUT OF BOUNDS"));
+        return false;
+    }
     for (int32 X = 0; X < BoxSizeX; X++)
     {
         for (int32 Y = 0; Y < BoxSizeY; Y++)
         {
-            if (!GridTiles[FVector(X * BoxTileSize, Y * BoxTileSize, FloorIndex * BoxTileSize)]) return false;
+            // UE_LOG(LogTemp, Error, TEXT("%s"), *FVector(X,Y,FloorIndex).ToString());
+
+            if (!GridTiles[FVector(X, Y, FloorIndex)]) return false;
         }
     }
     return true;
 }
-
 
 void ATDTTetrisBox::MoveDown()
 {
@@ -245,7 +261,7 @@ void ATDTTetrisBox::DisableFallDown()
 
 void ATDTTetrisBox::LockFigure()
 {
-    TArray<UStaticMeshComponent*> Blocks = GetFigureBlocks();
+    TArray<UStaticMeshComponent*> Blocks = GetFigureBlocks(CurrentFigure);
     for (auto Block : Blocks)
     {
         FVector GridIndex = WorldLocToGridIndex(Block->GetComponentLocation());
@@ -256,25 +272,24 @@ void ATDTTetrisBox::LockFigure()
             CurrentFigure = nullptr;
             DisableInput(GetWorld()->GetFirstPlayerController());
 
-            for (auto Tile : GridTiles)
-            {
-                if (Tile.Value != nullptr)
-                    UE_LOG(LogTemp, Warning, TEXT("\t%s\t%s"), *Tile.Key.ToString(), *Tile.Value->GetName());
-            }
             //GameOver();
             return;
         }
 
         GridTiles.Emplace(GridIndex, Block);
     }
+    CheckFloors();
+
+    CheckFigures();
+
     CurrentFigure = nullptr;
     SpawnFigure();
 }
 
-TArray<UStaticMeshComponent*> ATDTTetrisBox::GetFigureBlocks()
+TArray<UStaticMeshComponent*> ATDTTetrisBox::GetFigureBlocks(const ATDTBaseFigure* Figure) const
 {
     TArray<UStaticMeshComponent*> Blocks;
-    CurrentFigure->GetComponents<UStaticMeshComponent>(Blocks);
+    Figure->GetComponents<UStaticMeshComponent>(Blocks);
     return Blocks;
 }
 
@@ -302,9 +317,136 @@ FVector ATDTTetrisBox::GetCameraRightVector()
     return NewUnitVector;
 }
 
+void ATDTTetrisBox::CheckFloors()
+{
+    TSet<int32> FloorsIndexes;
+    for (auto Block : GetFigureBlocks(CurrentFigure))
+    {
+        FVector CurrentTile = WorldLocToGridIndex(Block->GetComponentLocation());
+        FloorsIndexes.Add(CurrentTile.Z);
+    }
+
+    for (auto Floor : FloorsIndexes)
+    {
+        if (IsFloorFull(Floor))
+        {
+            DestroyFloor(Floor);
+        }
+    }
+
+    MoveFloors();
+}
+
+void ATDTTetrisBox::DestroyFloor(int32 FloorIndex)
+{
+    // for (int32 Z = 0; Z < BoxSizeZ; Z++)
+    // {
+    //     for (int32 X = 0; X < BoxSizeX; X++)
+    //     {
+    //         for (int32 Y = 0; Y < BoxSizeY; Y++)
+    //         {
+    //             FString LogOut;
+    //             if (!GridTiles[FVector(X, Y, Z)])
+    //                 LogOut = "Nothing";
+    //             else
+    //             {
+    //                 LogOut = GridTiles[FVector(X, Y, Z)]->GetName();
+    //             }
+    //             UE_LOG(LogTemp, Warning, TEXT("\t[%i, %i, %i]  =  %s"), X, Y, Z, *LogOut);
+    //         }
+    //         UE_LOG(LogTemp, Error,
+    //             TEXT("\n\t------------------------------------------------------------------------------------------------\n"));
+    //     }
+    //     UE_LOG(LogTemp, Error,
+    //         TEXT("\n\n\t||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n\n"));
+    // }
+
+    for (int32 X = 0; X < BoxSizeX; X++)
+    {
+        for (int32 Y = 0; Y < BoxSizeY; Y++)
+        {
+            GridTiles[FVector(X, Y, FloorIndex)]->DestroyComponent();
+            GridTiles[FVector(X, Y, FloorIndex)] = nullptr;
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Floor destroyed!"));
+    FloorDestroyed = true;
+
+    // for (int32 Z = 0; Z < BoxSizeZ; Z++)
+    // {
+    //     for (int32 X = 0; X < BoxSizeX; X++)
+    //     {
+    //         for (int32 Y = 0; Y < BoxSizeY; Y++)
+    //         {
+    //             FString LogOut;
+    //             if (!GridTiles[FVector(X, Y, Z)])
+    //                 LogOut = "Nothing";
+    //             else
+    //             {
+    //                 LogOut = GridTiles[FVector(X, Y, Z)]->GetName();
+    //             }
+    //             UE_LOG(LogTemp, Warning, TEXT("\t[%i, %i, %i]  =  %s"), X, Y, Z, *LogOut);
+    //         }
+    //         UE_LOG(LogTemp, Error,
+    //             TEXT("\n\t------------------------------------------------------------------------------------------------\n"));
+    //     }
+    //     UE_LOG(LogTemp, Error,
+    //         TEXT("\n\n\t||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n\n"));
+    // }
+}
+
+void ATDTTetrisBox::MoveFloors()
+{
+    if (!FloorDestroyed) return;
+
+    for (int32 Z = 1; Z < BoxSizeZ; Z++)
+    {
+        for (int32 X = 0; X < BoxSizeX; X++)
+        {
+            for (int32 Y = 0; Y < BoxSizeY; Y++)
+            {
+                FVector Tile(X, Y, Z);
+                UE_LOG(LogTemp, Warning, TEXT("GridIndex : %s"), *Tile.ToCompactString());
+
+                if (GridTiles[Tile] != nullptr)
+                {
+                    FVector OldLocation = Tile;
+
+                    FVector NewLocation = OldLocation;
+                    NewLocation.Z -= 1;
+                    GridTiles[Tile]->SetWorldLocation(GridIndexToWorldLoc(NewLocation));
+                    UE_LOG(LogTemp, Warning, TEXT("New GridIndex : %s"), *NewLocation.ToString());
+
+                    GridTiles.Emplace(WorldLocToGridIndex(GridTiles[Tile]->GetComponentLocation()), GridTiles[Tile]);
+                    GridTiles.Emplace(OldLocation, nullptr);
+                }
+            }
+        }
+    }
+
+    FloorDestroyed = false;
+}
+
+void ATDTTetrisBox::CheckFigures()
+{
+    TArray<AActor*> Figures;
+    UGameplayStatics::GetAllActorsOfClass(this, FigureClass, Figures);
+
+    for (auto FigureActor : Figures)
+    {
+        ATDTBaseFigure* Figure = Cast<ATDTBaseFigure>(FigureActor);
+
+        if (!Figure || GetFigureBlocks(Figure).Num()) return;
+
+        Figure->Destroy();
+    }
+}
+
+
 bool ATDTTetrisBox::IsFigureInBounds()
 {
-    TArray<UStaticMeshComponent*> Blocks = GetFigureBlocks();
+    TArray<UStaticMeshComponent*> Blocks = GetFigureBlocks(CurrentFigure);
 
     for (auto Block : Blocks)
     {
@@ -394,6 +536,7 @@ void ATDTTetrisBox::RotateFront()
     FRotator CurRotation = CurrentFigure->GetActorRotation();
     FRotator NewRotation = CurRotation;
     NewRotation.Pitch += 90.f;
+
     CurrentFigure->SetActorRotation(NewRotation);
 
     if (!IsFigureInBounds())
@@ -409,7 +552,8 @@ void ATDTTetrisBox::RotateBack()
 
     FRotator CurRotation = CurrentFigure->GetActorRotation();
     FRotator NewRotation = CurRotation;
-    NewRotation.Pitch -= 90.f;
+    NewRotation.Pitch += -90.f;
+
     CurrentFigure->SetActorRotation(NewRotation);
 
     if (!IsFigureInBounds())
@@ -426,6 +570,7 @@ void ATDTTetrisBox::RotateRight()
     FRotator CurRotation = CurrentFigure->GetActorRotation();
     FRotator NewRotation = CurRotation;
     NewRotation.Roll += 90.f;
+
     CurrentFigure->SetActorRotation(NewRotation);
 
     if (!IsFigureInBounds())
@@ -441,7 +586,8 @@ void ATDTTetrisBox::RotateLeft()
 
     FRotator CurRotation = CurrentFigure->GetActorRotation();
     FRotator NewRotation = CurRotation;
-    NewRotation.Roll -= 90.f;
+    NewRotation.Roll += -90.f;
+
     CurrentFigure->SetActorRotation(NewRotation);
 
     if (!IsFigureInBounds())

@@ -13,10 +13,17 @@ ATDTBaseFigure::ATDTBaseFigure()
     FigureRootComp = CreateDefaultSubobject<USceneComponent>(TEXT("FigureRoot"));
     RootComponent = FigureRootComp;
 
-    int32 Index = FMath::Rand() % FigureTypesEnum->GetMaxEnumValue();
-    CurrentFigureType = static_cast<ETDTFigureType>(Index);
+    if (!DebugFigure)
+    {
+        int32 Index = FMath::Rand() % FigureTypesEnum->GetMaxEnumValue();
+        CurrentFigureType = static_cast<ETDTFigureType>(Index);
 
-    GenerateFigure(CurrentFigureType);
+        GenerateFigure(CurrentFigureType);
+    }
+    else
+    {
+        GenerateFigure(ETDTFigureType::O);
+    }
 }
 
 void ATDTBaseFigure::BeginPlay()

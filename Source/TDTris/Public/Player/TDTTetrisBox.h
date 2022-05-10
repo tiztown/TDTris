@@ -120,8 +120,19 @@ private:
     FTimerHandle AutoFallTimerHandle;
     FTimerHandle FallTimerHandle;
 
-    TArray<UStaticMeshComponent*> GetFigureBlocks();
+    TArray<UStaticMeshComponent*> GetFigureBlocks(const ATDTBaseFigure* Figure) const;
 
     FVector GetCameraForwardVector();
     FVector GetCameraRightVector();
+
+    void CheckFloors();
+    void DestroyFloor(int32 FloorIndex);
+    void MoveFloors();
+    void CheckFigures();
+
+
+    UPROPERTY(EditDefaultsOnly, Category = "Debug")
+    bool DebugFigures = false;
+
+    bool FloorDestroyed = false;
 };

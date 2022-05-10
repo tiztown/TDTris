@@ -29,6 +29,7 @@ public:
     UFUNCTION()
     void GenerateFigure(ETDTFigureType FigureType);
 
+    bool DebugFigure = false;
 
     void MoveUp();
     void MoveDown();
@@ -61,6 +62,7 @@ private:
     float BlockSize = 100.f;
 
     TArray<FVector> BlocksOffsets;
+
 
     void CalculateFigureBounds();
 
