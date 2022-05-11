@@ -18,11 +18,8 @@ public:
 
 protected:
     virtual void BeginPlay() override;
-    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
 public:
-    virtual void Tick(float DeltaTime) override;
-
     UPROPERTY(EditAnywhere, Category = "Figure")
     ETDTFigureType CurrentFigureType;
 

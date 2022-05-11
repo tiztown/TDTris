@@ -127,7 +127,7 @@ private:
 
     void CheckFloors();
     void DestroyFloor(int32 FloorIndex);
-    void MoveFloors();
+    void MoveFloor(int32 FloorIndex);
     void CheckFigures();
 
 
@@ -135,4 +135,18 @@ private:
     bool DebugFigures = false;
 
     bool FloorDestroyed = false;
+
+    int32 FloorsDestroyedCounter = 0;
+    void LevelUp();
+
+    int32 TotalScore = 0;
+    const int32 Score = 100;
+    float ScoreMultiplier = 1.f;
+
+    float FallingSpeed = 1.f;
+
+    UPROPERTY(EditAnywhere, Category = "Gameplay")
+    int32 LevelsToLevelUp = 5;
+
+    void GameOver();
 };

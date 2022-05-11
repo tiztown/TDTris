@@ -8,7 +8,7 @@
 
 ATDTBaseFigure::ATDTBaseFigure()
 {
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
 
     FigureRootComp = CreateDefaultSubobject<USceneComponent>(TEXT("FigureRoot"));
     RootComponent = FigureRootComp;
@@ -33,17 +33,6 @@ void ATDTBaseFigure::BeginPlay()
     SetFigureVisual();
 
     //CalculateFigureBounds();
-}
-
-
-void ATDTBaseFigure::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-    Super::PostEditChangeProperty(PropertyChangedEvent);
-}
-
-void ATDTBaseFigure::Tick(float DeltaTime)
-{
-    Super::Tick(DeltaTime);
 }
 
 

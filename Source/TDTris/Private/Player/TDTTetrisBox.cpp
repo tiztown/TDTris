@@ -43,7 +43,7 @@ void ATDTTetrisBox::BeginPlay()
 
     SpawnFigure();
 
-    GetWorldTimerManager().SetTimer(AutoFallTimerHandle, this, &ATDTTetrisBox::MoveDown, 1.f, true);
+    GetWorldTimerManager().SetTimer(AutoFallTimerHandle, this, &ATDTTetrisBox::MoveDown, FallingSpeed, true);
 }
 
 void ATDTTetrisBox::Tick(float DeltaTime)
@@ -267,12 +267,7 @@ void ATDTTetrisBox::LockFigure()
         FVector GridIndex = WorldLocToGridIndex(Block->GetComponentLocation());
         if (!GridTiles.Contains(GridIndex))
         {
-            GetWorldTimerManager().ClearTimer(AutoFallTimerHandle);
-            UE_LOG(LogTemp, Warning, TEXT("--------Game Over!--------"));
-            CurrentFigure = nullptr;
-            DisableInput(GetWorld()->GetFirstPlayerController());
-
-            //GameOver();
+            GameOver();
             return;
         }
 
@@ -326,41 +321,18 @@ void ATDTTetrisBox::CheckFloors()
         FloorsIndexes.Add(CurrentTile.Z);
     }
 
-    for (auto Floor : FloorsIndexes)
+    for (int32 FloorIndex = FloorsIndexes.Num(); FloorIndex >= 0; FloorIndex--)
     {
-        if (IsFloorFull(Floor))
+        if (IsFloorFull(FloorIndex))
         {
-            DestroyFloor(Floor);
+            DestroyFloor(FloorIndex);
+            MoveFloor(FloorIndex);
         }
     }
-
-    MoveFloors();
 }
 
 void ATDTTetrisBox::DestroyFloor(int32 FloorIndex)
 {
-    // for (int32 Z = 0; Z < BoxSizeZ; Z++)
-    // {
-    //     for (int32 X = 0; X < BoxSizeX; X++)
-    //     {
-    //         for (int32 Y = 0; Y < BoxSizeY; Y++)
-    //         {
-    //             FString LogOut;
-    //             if (!GridTiles[FVector(X, Y, Z)])
-    //                 LogOut = "Nothing";
-    //             else
-    //             {
-    //                 LogOut = GridTiles[FVector(X, Y, Z)]->GetName();
-    //             }
-    //             UE_LOG(LogTemp, Warning, TEXT("\t[%i, %i, %i]  =  %s"), X, Y, Z, *LogOut);
-    //         }
-    //         UE_LOG(LogTemp, Error,
-    //             TEXT("\n\t------------------------------------------------------------------------------------------------\n"));
-    //     }
-    //     UE_LOG(LogTemp, Error,
-    //         TEXT("\n\n\t||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n\n"));
-    // }
-
     for (int32 X = 0; X < BoxSizeX; X++)
     {
         for (int32 Y = 0; Y < BoxSizeY; Y++)
@@ -371,36 +343,20 @@ void ATDTTetrisBox::DestroyFloor(int32 FloorIndex)
     }
 
     UE_LOG(LogTemp, Warning, TEXT("Floor destroyed!"));
-    FloorDestroyed = true;
+    TotalScore += Score * ScoreMultiplier;
+    FloorsDestroyedCounter++;
 
-    // for (int32 Z = 0; Z < BoxSizeZ; Z++)
-    // {
-    //     for (int32 X = 0; X < BoxSizeX; X++)
-    //     {
-    //         for (int32 Y = 0; Y < BoxSizeY; Y++)
-    //         {
-    //             FString LogOut;
-    //             if (!GridTiles[FVector(X, Y, Z)])
-    //                 LogOut = "Nothing";
-    //             else
-    //             {
-    //                 LogOut = GridTiles[FVector(X, Y, Z)]->GetName();
-    //             }
-    //             UE_LOG(LogTemp, Warning, TEXT("\t[%i, %i, %i]  =  %s"), X, Y, Z, *LogOut);
-    //         }
-    //         UE_LOG(LogTemp, Error,
-    //             TEXT("\n\t------------------------------------------------------------------------------------------------\n"));
-    //     }
-    //     UE_LOG(LogTemp, Error,
-    //         TEXT("\n\n\t||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n\n"));
-    // }
+    if (FloorsDestroyedCounter % LevelsToLevelUp == 0 && ScoreMultiplier < 3)
+        LevelUp();
+
+    FloorDestroyed = true;
 }
 
-void ATDTTetrisBox::MoveFloors()
+void ATDTTetrisBox::MoveFloor(int32 FloorIndex)
 {
     if (!FloorDestroyed) return;
 
-    for (int32 Z = 1; Z < BoxSizeZ; Z++)
+    for (int32 Z = FloorIndex + 1; Z < BoxSizeZ; Z++)
     {
         for (int32 X = 0; X < BoxSizeX; X++)
         {
@@ -443,6 +399,33 @@ void ATDTTetrisBox::CheckFigures()
     }
 }
 
+void ATDTTetrisBox::LevelUp()
+{
+    ScoreMultiplier += 0.2f;
+    FallingSpeed *= 0.9f;
+
+    GetWorldTimerManager().ClearTimer(AutoFallTimerHandle);
+    GetWorldTimerManager().SetTimer(AutoFallTimerHandle, this, &ATDTTetrisBox::MoveDown, FallingSpeed, true);
+}
+
+void ATDTTetrisBox::GameOver()
+{
+    GetWorldTimerManager().ClearTimer(AutoFallTimerHandle);
+    UE_LOG(LogTemp, Warning, TEXT("--------Game Over!--------"));
+    CurrentFigure = nullptr;
+    DisableInput(GetWorld()->GetFirstPlayerController());
+
+    FString GameOverMessage = "---Game Over---\nYour score is: " + FString::FromInt(TotalScore);
+
+    UE_LOG(LogTemp, Warning, TEXT("%s"), *GameOverMessage);
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 50.f, FColor::Red, GameOverMessage);
+    }
+
+    // UEngine::AddOnScreenDebugMessage(0, 50.f, FColor::Red, GameOverMessage);
+}
 
 bool ATDTTetrisBox::IsFigureInBounds()
 {
@@ -534,10 +517,10 @@ void ATDTTetrisBox::RotateFront()
     if (!CurrentFigure) return;
 
     FRotator CurRotation = CurrentFigure->GetActorRotation();
-    FRotator NewRotation = CurRotation;
-    NewRotation.Pitch += 90.f;
+    FRotator NewRotation = UKismetMathLibrary::RotatorFromAxisAndAngle(GetCameraRightVector(), 90.f);
+    // NewRotation.Yaw += 90.f;
 
-    CurrentFigure->SetActorRotation(NewRotation);
+    CurrentFigure->AddActorWorldRotation(NewRotation);
 
     if (!IsFigureInBounds())
     {
@@ -551,10 +534,10 @@ void ATDTTetrisBox::RotateBack()
     if (!CurrentFigure) return;
 
     FRotator CurRotation = CurrentFigure->GetActorRotation();
-    FRotator NewRotation = CurRotation;
-    NewRotation.Pitch += -90.f;
+    FRotator NewRotation = UKismetMathLibrary::RotatorFromAxisAndAngle(GetCameraRightVector(), -90.f);
+    // NewRotation.Yaw += -90.f;
 
-    CurrentFigure->SetActorRotation(NewRotation);
+    CurrentFigure->AddActorWorldRotation(NewRotation);
 
     if (!IsFigureInBounds())
     {
@@ -568,10 +551,10 @@ void ATDTTetrisBox::RotateRight()
     if (!CurrentFigure) return;
 
     FRotator CurRotation = CurrentFigure->GetActorRotation();
-    FRotator NewRotation = CurRotation;
-    NewRotation.Roll += 90.f;
+    FRotator NewRotation = UKismetMathLibrary::RotatorFromAxisAndAngle(GetCameraForwardVector(), -90.f);
+    // NewRotation.Roll += 90.f;
 
-    CurrentFigure->SetActorRotation(NewRotation);
+    CurrentFigure->AddActorWorldRotation(NewRotation);
 
     if (!IsFigureInBounds())
     {
@@ -585,10 +568,10 @@ void ATDTTetrisBox::RotateLeft()
     if (!CurrentFigure) return;
 
     FRotator CurRotation = CurrentFigure->GetActorRotation();
-    FRotator NewRotation = CurRotation;
-    NewRotation.Roll += -90.f;
+    FRotator NewRotation = UKismetMathLibrary::RotatorFromAxisAndAngle(GetCameraForwardVector(), 90.f);
+    //NewRotation.Roll += -90.f;
 
-    CurrentFigure->SetActorRotation(NewRotation);
+    CurrentFigure->AddActorWorldRotation(NewRotation);
 
     if (!IsFigureInBounds())
     {
