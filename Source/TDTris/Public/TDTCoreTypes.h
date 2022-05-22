@@ -32,14 +32,4 @@ struct FFigureData
     int32 BlocksCount = 4;
 };
 
-UENUM(BlueprintType)
-enum class ETDTFigureType : uint8
-{
-    I = 0,
-    O,
-    T,
-    J,
-    L,
-    S,
-    Z
-};
+

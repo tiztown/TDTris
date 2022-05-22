@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "TDTCoreTypes.h"
+#include "TDTFigureTypes.h"
 #include "GameFramework/Actor.h"
 #include "TDTBaseFigure.generated.h"
 
@@ -23,17 +23,20 @@ public:
     UPROPERTY(EditAnywhere, Category = "Figure")
     ETDTFigureType CurrentFigureType;
 
-    UFUNCTION()
-    void GenerateFigure(ETDTFigureType FigureType);
-
+    UPROPERTY(EditAnywhere)
     bool DebugFigure = false;
 
-    void MoveUp();
-    void MoveDown();
-    void MoveRight();
-    void MoveLeft();
+    UFUNCTION()
+    void SetMaterialToBlock(UStaticMeshComponent* Block, int32 MaterialIndex);
 
-private:
+    UFUNCTION()
+    TArray<FVector> GetBlocksOffsets() const { return BlocksOffsets; }
+
+    UFUNCTION()
+    FLinearColor GetColor() const { return CurrentColor; }
+
+
+protected:
     UPROPERTY(VisibleAnywhere, Category = "Components")
     USceneComponent* FigureRootComp = nullptr;
 
@@ -41,10 +44,16 @@ private:
     UStaticMesh* BlockMesh;
 
     UPROPERTY(EditAnywhere, Category = "Block")
-    UMaterialInstance* BlockMaterial;
+    UMaterialInstance* BlockMaterialFull;
 
     UPROPERTY(EditAnywhere, Category = "Block")
-    UMaterialInstanceDynamic* DynamicMaterial;
+    UMaterialInstance* BlockMaterialEmpty;
+
+    UPROPERTY(EditAnywhere, Category = "Block")
+    UMaterialInstanceDynamic* DynamicMaterialFull;
+
+    UPROPERTY(EditAnywhere, Category = "Block")
+    UMaterialInstanceDynamic* DynamicMaterialEmpty;
 
     UPROPERTY(EditAnywhere, Category = "Figure")
     FLinearColor CurrentColor = FColor::Red;
@@ -52,23 +61,19 @@ private:
     UPROPERTY(EditAnywhere, Category = "Abilities")
     bool IsGhosty = false;
 
-    UPROPERTY(EditAnywhere)
-    FFigureData CurrentFigureData;
+    // UPROPERTY(EditAnywhere)
+    // FFigureData CurrentFigureData;
 
     UPROPERTY(EditAnywhere)
     float BlockSize = 100.f;
 
     TArray<FVector> BlocksOffsets;
 
-
-    void CalculateFigureBounds();
-
     UPROPERTY()
     TArray<UStaticMeshComponent*> BlocksPointers;
-
 
     UPROPERTY(VisibleAnywhere)
     UEnum* FigureTypesEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ETDTFigureType"));
 
-    void SetFigureVisual();
+    virtual void SetFigureVisual();
 };

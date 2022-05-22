@@ -8,78 +8,30 @@
 
 ATDTBaseFigure::ATDTBaseFigure()
 {
-    PrimaryActorTick.bCanEverTick = false;
-
-    FigureRootComp = CreateDefaultSubobject<USceneComponent>(TEXT("FigureRoot"));
-    RootComponent = FigureRootComp;
-
-    if (!DebugFigure)
-    {
-        int32 Index = FMath::Rand() % FigureTypesEnum->GetMaxEnumValue();
-        CurrentFigureType = static_cast<ETDTFigureType>(Index);
-
-        GenerateFigure(CurrentFigureType);
-    }
-    else
-    {
-        GenerateFigure(ETDTFigureType::O);
-    }
 }
 
 void ATDTBaseFigure::BeginPlay()
 {
     Super::BeginPlay();
-
-    SetFigureVisual();
-
-    //CalculateFigureBounds();
-}
-
-
-void ATDTBaseFigure::MoveUp()
-{
-    FVector CurLocation = GetActorLocation();
-    FVector NewLocation = CurLocation;
-    NewLocation.X += 100.f;
-    FFigureData NewFigureData = CurrentFigureData;
-    NewFigureData.LowerXBound += 100.f;
-    NewFigureData.UpperXBound += 100.f;
-
-    // if (GetOwner->IsInBounds(NewFigureData))
-    // {
-    //     SetActorLocation(NewLocation);
-    //     CurrentFigureData.LowerXBound += 100.f;
-    //     CurrentFigureData.UpperXBound += 100.f;
-    // }
-}
-
-void ATDTBaseFigure::MoveDown()
-{
-}
-
-void ATDTBaseFigure::MoveRight()
-{
-}
-
-void ATDTBaseFigure::MoveLeft()
-{
-}
-
-void ATDTBaseFigure::CalculateFigureBounds()
-{
-    //
-    // CurrentFigureData.LowerXBound = BlocksPointers[0]->GetComponentLocation().X;
 }
 
 void ATDTBaseFigure::SetFigureVisual()
 {
-    if (!DynamicMaterial)
+    if (!DynamicMaterialFull)
     {
-        if (!BlockMaterial) return;
-        DynamicMaterial = UMaterialInstanceDynamic::Create(BlockMaterial, this, "FigureMaterial");
+        if (!BlockMaterialFull) return;
+        DynamicMaterialFull = UMaterialInstanceDynamic::Create(BlockMaterialFull, this, "FigureMaterial1");
     }
 
-    DynamicMaterial->SetVectorParameterValue("Color", FVector(CurrentColor.R, CurrentColor.G, CurrentColor.B));
+    DynamicMaterialFull->SetVectorParameterValue("Color", FVector(CurrentColor.R, CurrentColor.G, CurrentColor.B));
+
+    if (!DynamicMaterialEmpty)
+    {
+        if (!BlockMaterialEmpty) return;
+        DynamicMaterialEmpty = UMaterialInstanceDynamic::Create(BlockMaterialEmpty, this, "FigureMaterial2");
+    }
+
+    DynamicMaterialEmpty->SetVectorParameterValue("Color", FVector(CurrentColor.R, CurrentColor.G, CurrentColor.B));
 
     if (!BlockMesh)
     {
@@ -87,7 +39,7 @@ void ATDTBaseFigure::SetFigureVisual()
         return;
     }
 
-    if (!BlocksPointers.Num()) return;
+    if (!BlocksPointers.Num() || !BlocksOffsets.Num()) return;
 
     for (int32 i = 0, n = BlocksPointers.Num(); i < n; i++)
     {
@@ -95,34 +47,19 @@ void ATDTBaseFigure::SetFigureVisual()
         {
             BlocksPointers[i]->SetStaticMesh(BlockMesh);
 
-            BlocksPointers[i]->SetMaterial(0, DynamicMaterial);
+            BlocksPointers[i]->SetMaterial(0, DynamicMaterialFull);
             BlocksPointers[i]->SetRelativeLocation(BlocksOffsets[i]);
         }
     }
 }
 
 
-void ATDTBaseFigure::GenerateFigure(ETDTFigureType FigureType)
+void ATDTBaseFigure::SetMaterialToBlock(UStaticMeshComponent* Block, int32 MaterialIndex)
 {
-    if (BlocksPointers.Num())
-    {
-        BlocksPointers.Empty();
-    }
+    if (!DynamicMaterialEmpty || !DynamicMaterialFull) return;
 
-    int32 BlocksCount;
-    FColor FigureColor;
+    // UE_LOG(LogTemp, Warning, TEXT("%s"), *Block->GetOwner()->GetName());
 
-    BlocksOffsets.Empty();
-
-    BlocksOffsets = GenerateFigurePattern(FigureType, BlocksCount, FigureColor);
-
-    CurrentColor = FigureColor;
-
-    for (int32 Count = 0; Count < BlocksCount; Count++)
-    {
-        const FName Name = *FString::Printf(TEXT("Block%i"), Count);
-        UStaticMeshComponent* TempComp = CreateDefaultSubobject<UStaticMeshComponent>(Name);
-        TempComp->SetupAttachment(RootComponent);
-        BlocksPointers.Add(TempComp);
-    }
+    UMaterialInstanceDynamic* DynamicMaterial = MaterialIndex ? DynamicMaterialFull : DynamicMaterialEmpty;
+    Block->SetMaterial(0, DynamicMaterial);
 }
