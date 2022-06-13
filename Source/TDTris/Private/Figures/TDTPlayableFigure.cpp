@@ -10,7 +10,7 @@ ATDTPlayableFigure::ATDTPlayableFigure()
     FigureRootComp = CreateDefaultSubobject<USceneComponent>(TEXT("FigureRoot"));
     RootComponent = FigureRootComp;
 
-    int32 Index = FMath::Rand() % FigureTypesEnum->GetMaxEnumValue();
+    int32 Index = FMath::Rand() % (FigureTypesEnum->GetMaxEnumValue()-1);
     CurrentFigureType = static_cast<ETDTFigureType>(Index);
 
     GeneratePlayableFigure(CurrentFigureType);

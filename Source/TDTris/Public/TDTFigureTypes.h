@@ -12,6 +12,11 @@ enum class ETDTFigureType : uint8
     L,
     S,
     Z,
+    // Cube,
+    // CircleL,
+    // CircleB,
+    // XYZ,
+    // U,
     Default
 };
 
@@ -30,7 +35,7 @@ inline TArray<FVector> GenerateFigurePattern(ETDTFigureType FigureType, int32& B
             BlocksOffsets.Add({0.f, -100.f, 0.f});
             BlocksOffsets.Add({0.f, 0.f, 0.f});
             BlocksOffsets.Add({0.f, 100.f, 0.f});
-            BlocksOffsets.Add({0.f, 200.f, 0.f});
+            BlocksOffsets.Add({0.f, -200.f, 0.f});
 
             break;
         }
@@ -115,7 +120,12 @@ inline TArray<FVector> GenerateFigurePattern(ETDTFigureType FigureType, int32& B
         case ETDTFigureType::Default:
         {
             BlocksCount = 4;
-            
+
+            FigureColor = FColor::White;
+        }
+        default:
+        {
+            BlocksCount = 10;
             FigureColor = FColor::White;
         }
     }

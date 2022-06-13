@@ -90,6 +90,9 @@ private:
     USceneComponent* CameraPoint = nullptr;
 
     UPROPERTY(VisibleAnywhere)
+    UStaticMeshComponent* BoxMeshComp = nullptr;
+
+    UPROPERTY(VisibleAnywhere)
     TMap<FVector, UStaticMeshComponent*> GridTiles = {};
 
     UPROPERTY(EditAnywhere, Category = "Size")

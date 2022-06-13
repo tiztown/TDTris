@@ -32,13 +32,22 @@ ATDTTetrisBox::ATDTTetrisBox()
 
     QueueSpawnPoint = CreateDefaultSubobject<USceneComponent>(TEXT("QueueSpawnPoint"));
     QueueSpawnPoint->SetupAttachment(GridZeroPoint);
+
+    BoxMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BoxMeshComponent"));
+    BoxMeshComp->SetupAttachment(RootComponent);
 }
 
 void ATDTTetrisBox::BeginPlay()
 {
     Super::BeginPlay();
 
+    if (!BoxMeshComp) return;
+
     GenerateGrid(BoxSizeX, BoxSizeY, BoxSizeZ, BoxTileSize);
+
+    BoxMeshComp->SetWorldScale3D(FVector(BoxSizeX, BoxSizeY, BoxSizeZ - 0.5));
+    BoxMeshComp->SetRelativeLocation(FVector(BoxSizeX / 2 * BoxTileSize - BoxTileSize / 2, BoxSizeY / 2 * BoxTileSize - BoxTileSize / 2,
+        BoxSizeZ / 2 * BoxTileSize - BoxTileSize * 0.75));
 
     CameraPoint->SetRelativeLocation(FVector(BoxSizeX / 2 * BoxTileSize - BoxTileSize / 2, BoxSizeY / 2 * BoxTileSize - BoxTileSize / 2,
         BoxSizeZ / 2 * BoxTileSize - BoxTileSize / 2));
@@ -81,84 +90,45 @@ void ATDTTetrisBox::GenerateGrid(int32 SizeX, int32 SizeY, int32 SizeZ, float Ti
         }
     }
 
-    for (int32 X = 0; X < BoxSizeX; X++)
-    {
-        for (int32 Y = 0; Y < BoxSizeY; Y++)
-        {
-            FVector WorldLoc = GridIndexToWorldLoc(FVector(X, Y, 0));
-
-            DrawDebugBox(GetWorld(),                                        //
-                FVector(WorldLoc.X, WorldLoc.Y, WorldLoc.Z - TileSize / 2), //
-                FVector(TileSize / 2, TileSize / 2, 0),                     //
-                FColor::Black,                                              //
-                true, -1, 0, 10);
-        }
-    }
-
-    // FVector WorldLoc = GridIndexToWorldLoc(FVector(BoxSizeX / 2, BoxSizeY / 2, BoxSizeZ / 2));
-
-    DrawDebugBox(GetWorld(),                                                                    //
-        FVector(-TileSize / 2, IndexToFloat(BoxSizeY - 1) / 2, IndexToFloat(BoxSizeZ - 1) / 2), //
-        FVector(0, IndexToFloat(BoxSizeY) / 2, IndexToFloat(BoxSizeZ) / 2),                     //
-        FColor::Red,                                                                            //
-        true, -1, 0, 10);
-
-    DrawDebugBox(GetWorld(),                                                                                                //
-        FVector(IndexToFloat(BoxSizeX - 1) + TileSize / 2, IndexToFloat(BoxSizeY - 1) / 2, IndexToFloat(BoxSizeZ - 1) / 2), //
-        FVector(0, IndexToFloat(BoxSizeY) / 2, IndexToFloat(BoxSizeZ) / 2),                                                 //
-        FColor::Red,                                                                                                        //
-        true, -1, 0, 10);
-
-    DrawDebugBox(GetWorld(),                                                                    //
-        FVector(IndexToFloat(BoxSizeX - 1) / 2, -TileSize / 2, IndexToFloat(BoxSizeZ - 1) / 2), //
-        FVector(IndexToFloat(BoxSizeX) / 2, 0, IndexToFloat(BoxSizeZ) / 2),                     //
-        FColor::Green,                                                                          //
-        true, -1, 0, 10);
-
-    DrawDebugBox(GetWorld(),                                                                                                //
-        FVector(IndexToFloat(BoxSizeX - 1) / 2, IndexToFloat(BoxSizeY - 1) + TileSize / 2, IndexToFloat(BoxSizeZ - 1) / 2), //
-        FVector(IndexToFloat(BoxSizeX) / 2, 0, IndexToFloat(BoxSizeZ) / 2),                                                 //
-        FColor::Green,                                                                                                      //
-        true, -1, 0, 10);
-
-    //     FVector TileCenter = GridIndexToWorldLoc(Tile.Key);
+    // for (int32 X = 0; X < BoxSizeX; X++)
+    // {
+    //     for (int32 Y = 0; Y < BoxSizeY; Y++)
+    //     {
+    //         FVector WorldLoc = GridIndexToWorldLoc(FVector(X, Y, 0));
     //
-    //     if (Tile.Key.X == 0)
-    //     {
-    //         DrawDebugBox(GetWorld(),                                              //
-    //             FVector(TileCenter.X - TileSize / 2, TileCenter.Y, TileCenter.Z), //
-    //             FVector(0, TileSize / 2, TileSize / 2),                           //
-    //             FColor::Red,                                                      //
-    //             true, -1, 0, 10);
-    //     }
-    //     if (Tile.Key.Y == 0)
-    //     {
-    //         DrawDebugBox(GetWorld(),                                              //
-    //             FVector(TileCenter.X, TileCenter.Y - TileSize / 2, TileCenter.Z), //
-    //             FVector(TileSize / 2, 0, TileSize / 2),                           //
-    //             FColor::Blue,                                                     //
-    //             true, -1, 0, 10);
-    //     }
-    //     if (Tile.Key.Z == 0)
-    //     {
-    //     }
-    //     if (Tile.Key.X == SizeX - 1)
-    //     {
-    //         DrawDebugBox(GetWorld(),                                              //
-    //             FVector(TileCenter.X + TileSize / 2, TileCenter.Y, TileCenter.Z), //
-    //             FVector(0, TileSize / 2, TileSize / 2),                           //
-    //             FColor::Red,                                                      //
-    //             true, -1, 0, 10);
-    //     }
-    //     if (Tile.Key.Y == SizeY - 1)
-    //     {
-    //         DrawDebugBox(GetWorld(),                                              //
-    //             FVector(TileCenter.X, TileCenter.Y + TileSize / 2, TileCenter.Z), //
-    //             FVector(TileSize / 2, 0, TileSize / 2),                           //
-    //             FColor::Blue,                                                     //
+    //         DrawDebugBox(GetWorld(),                                        //
+    //             FVector(WorldLoc.X, WorldLoc.Y, WorldLoc.Z - TileSize / 2), //
+    //             FVector(TileSize / 2, TileSize / 2, 0),                     //
+    //             FColor::Black,                                              //
     //             true, -1, 0, 10);
     //     }
     // }
+    //
+    // // FVector WorldLoc = GridIndexToWorldLoc(FVector(BoxSizeX / 2, BoxSizeY / 2, BoxSizeZ / 2));
+    //
+    // DrawDebugBox(GetWorld(),                                                                    //
+    //     FVector(-TileSize / 2, IndexToFloat(BoxSizeY - 1) / 2, IndexToFloat(BoxSizeZ - 1) / 2), //
+    //     FVector(0, IndexToFloat(BoxSizeY) / 2, IndexToFloat(BoxSizeZ) / 2),                     //
+    //     FColor::Red,                                                                            //
+    //     true, -1, 0, 10);
+    //
+    // DrawDebugBox(GetWorld(),                                                                                                //
+    //     FVector(IndexToFloat(BoxSizeX - 1) + TileSize / 2, IndexToFloat(BoxSizeY - 1) / 2, IndexToFloat(BoxSizeZ - 1) / 2), //
+    //     FVector(0, IndexToFloat(BoxSizeY) / 2, IndexToFloat(BoxSizeZ) / 2),                                                 //
+    //     FColor::Red,                                                                                                        //
+    //     true, -1, 0, 10);
+    //
+    // DrawDebugBox(GetWorld(),                                                                    //
+    //     FVector(IndexToFloat(BoxSizeX - 1) / 2, -TileSize / 2, IndexToFloat(BoxSizeZ - 1) / 2), //
+    //     FVector(IndexToFloat(BoxSizeX) / 2, 0, IndexToFloat(BoxSizeZ) / 2),                     //
+    //     FColor::Green,                                                                          //
+    //     true, -1, 0, 10);
+    //
+    // DrawDebugBox(GetWorld(),                                                                                                //
+    //     FVector(IndexToFloat(BoxSizeX - 1) / 2, IndexToFloat(BoxSizeY - 1) + TileSize / 2, IndexToFloat(BoxSizeZ - 1) / 2), //
+    //     FVector(IndexToFloat(BoxSizeX) / 2, 0, IndexToFloat(BoxSizeZ) / 2),                                                 //
+    //     FColor::Green,                                                                                                      //
+    //     true, -1, 0, 10);
 }
 
 void ATDTTetrisBox::GenerateQueue(int32 FiguresNum)
@@ -392,9 +362,9 @@ void ATDTTetrisBox::PlaceTemplateFigure()
 
 void ATDTTetrisBox::DropTemplate()
 {
+    if (!CurrentFigure) return;
     FTransform ParentTransform = CurrentFigure->GetActorTransform();
     TemplateFigure->SetActorTransform(ParentTransform);
-
 
     FVector PrevLocation = TemplateFigure->GetActorLocation();
 
@@ -407,7 +377,7 @@ void ATDTTetrisBox::DropTemplate()
 
         if (!IsFigureInBounds(TemplateFigure))
         {
-            UE_LOG(LogTemp, Warning, TEXT("OUT"));
+            UE_LOG(LogTemp, Warning, TEXT("Figure %s OUT"), *CurrentFigure->GetName());
 
             TemplateFigure->SetActorLocation(PrevLocation);
             break;
@@ -415,6 +385,7 @@ void ATDTTetrisBox::DropTemplate()
 
         PrevLocation = NewLocation;
     }
+    UE_LOG(LogTemp, Warning, TEXT("Location of figure %s = %s"), *CurrentFigure->GetName(), *TemplateFigure->GetActorLocation().ToString());
 }
 
 void ATDTTetrisBox::MoveFigureToSpawn()
@@ -448,7 +419,7 @@ void ATDTTetrisBox::MoveDown()
 
     CurrentFigure->SetActorLocation(NewLocation);
 
-    if (!IsFigureInBounds(CurrentFigure) || GridTiles[WorldLocToGridIndex(NewLocation)] != nullptr)
+    if (!IsFigureInBounds(CurrentFigure)) //  || GridTiles[WorldLocToGridIndex(NewLocation)] != nullptr
     {
         CurrentFigure->SetActorLocation(CurLocation);
         LockFigure();
